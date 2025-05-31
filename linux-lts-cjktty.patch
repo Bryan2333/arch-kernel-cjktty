@@ -1,0 +1,127 @@
+diff --git a/PKGBUILD b/PKGBUILD
+index 4c0ddf5..7730eb0 100644
+--- a/PKGBUILD
++++ b/PKGBUILD
+@@ -1,9 +1,9 @@
+ # Maintainer: Andreas Radke <andyrtr@archlinux.org>
+ 
+-pkgbase=linux-lts
++pkgbase=linux-lts-cjktty
+ pkgver=6.12.31
+ pkgrel=1
+-pkgdesc='LTS Linux'
++pkgdesc='LTS Linux (with cjktty-patches)'
+ url='https://www.kernel.org'
+ arch=(x86_64)
+ makedepends=(
+@@ -16,18 +16,12 @@ makedepends=(
+   python
+   tar
+   xz
+-
+-  # htmldocs
+-  graphviz
+-  imagemagick
+-  python-sphinx
+-  python-yaml
+-  texlive-latexextra
+ )
+ options=(
+   !debug
+   !strip
+ )
++_cjktty_repo="https://github.com/bigshans/cjktty-patches"
+ _srcname=linux-$pkgver
+ _srctag=v$pkgver
+ source=(
+@@ -37,6 +31,8 @@ source=(
+   0003-skip-simpledrm-if-nvidia-drm.modeset\=1-is.patch
+   config  # the main kernel config file
+ )
++source+=("$_cjktty_repo/raw/master/v6.x/cjktty-6.9.patch"
++         "$_cjktty_repo/raw/master/cjktty-add-cjk32x32-font-data.patch")
+ validpgpkeys=(
+   ABAF11C65A2970B130ABE3C479BE3E4300411886  # Linus Torvalds
+   647F28654894E3BD457199BE38DBBDC86092693E  # Greg Kroah-Hartman
+@@ -54,6 +50,12 @@ b2sums=('5738a200674cb5126f0373dbcdb1421ff32da84645416abfb8c45ed7f13574f06b77546
+         '01f1a8249983b1a52437843ce3566242b3ed1df03fcab98ec092982be9a4dc947ab0f932a6bc9ac84f85248dca479ebe193a6032cfd2b574dc6f5ca31a0190c5'
+         '410dc8911051905c5c01b47890eeff817fc180434372864cfa9ee0d77e0ff43571b9fcc3c193d562c4dcd49511edf7c6c01dde12dd0778845d1868dc435531ea'
+         '55d82cc1d5dcecc658af45aff440b9a99337bfd8805fe08c8d3069911a1b2442b9eefc8892e736a9129703691f75624fe5122e60d3124ce72e1b947c29e5fdd9')
++
++sha256sums+=('6714bf3968392e29f19e44514d490ad7ec718c3897003210fd1e499017dd429d'
++             'c648ff21f0a5714743bbae85d6c6e1ed2bf961b6bca976d4c6b4c8d3f6b2739f')
++b2sums+=('8e08152d7413fbd00f71e5f09c680ad7b6b4f8bdfbd56b07659ea7ce54a7d738b73c0fa240f3c90133d4cb2e566be94ffaad5ba1ffddbd4dff99ea6587c44b42'
++         '101996793aeede5e456b23b35c2fd4af5c38fd363473dcdda0bce6e21d110a9f88a67e325b1ebf8efef4a7511f135c4f64ff1fc54b8ef925a5df8d6292ba7678')
++
+ export KBUILD_BUILD_HOST=archlinux
+ export KBUILD_BUILD_USER=$pkgbase
+ export KBUILD_BUILD_TIMESTAMP="$(date -Ru${SOURCE_DATE_EPOCH:+d @$SOURCE_DATE_EPOCH})"
+@@ -86,12 +88,8 @@ prepare() {
+ 
+ build() {
+   cd $_srcname
+-
+-  make htmldocs &
+-  local pid_docs=$!
+   make all
+   make -C tools/bpf/bpftool vmlinux.h feature-clang-bpf-co-re=1
+-  wait "${pid_docs}"
+ }
+ 
+ _package() {
+@@ -323,55 +321,9 @@ _package-headers() {
+   install -vDm 644 LICENSES/exceptions/* -t "$pkgdir/usr/share/licenses/$pkgname/"
+ }
+ 
+-_package-docs() {
+-  pkgdesc="Documentation for the $pkgdesc kernel"
+-  license=(
+-    BSD-3-Clause
+-
+-    GFDL-1.1-no-invariants-or-later
+-
+-    GPL-2.0-only
+-    'GPL-2.0-only OR BSD-2-Clause'
+-    'GPL-2.0-only OR BSD-3-Clause'
+-    'GPL-2.0-only OR GFDL-1.1-no-invariants-or-later'
+-    'GPL-2.0-only OR GFDL-1.2-no-invariants-only'
+-    'GPL-2.0-only OR MIT'
+-
+-    GPL-2.0-or-later
+-    'GPL-2.0-or-later OR BSD-2-Clause'
+-    'GPL-2.0-or-later OR CC-BY-4.0'
+-    'GPL-2.0-or-later OR MIT'
+-    'GPL-2.0-or-later OR X11'
+-
+-    'LGPL-2.1-only OR BSD-2-Clause'
+-
+-    MIT
+-  )
+-
+-  cd $_srcname
+-  local builddir="$pkgdir/usr/lib/modules/$(<version)/build"
+-
+-  echo "Installing documentation..."
+-  local src dst
+-  while read -rd '' src; do
+-    dst="${src#Documentation/}"
+-    dst="$builddir/Documentation/${dst#output/}"
+-    install -Dm644 "$src" "$dst"
+-  done < <(find Documentation -name '.*' -prune -o ! -type d -print0)
+-
+-  echo "Adding symlink..."
+-  mkdir -p "$pkgdir/usr/share/doc"
+-  ln -sr "$builddir/Documentation" "$pkgdir/usr/share/doc/$pkgbase"
+-
+-  # licenses
+-  install -vDm 644 LICENSES/deprecated/X11 -t "$pkgdir/usr/share/licenses/$pkgname/"
+-  install -vDm 644 LICENSES/preferred/{BSD*,MIT} -t "$pkgdir/usr/share/licenses/$pkgname/"
+-}
+-
+ pkgname=(
+   "$pkgbase"
+   "$pkgbase-headers"
+-  "$pkgbase-docs"
+ )
+ for _p in "${pkgname[@]}"; do
+   eval "package_$_p() {
