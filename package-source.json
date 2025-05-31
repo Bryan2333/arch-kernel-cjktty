@@ -1,0 +1,6 @@
+[
+    {
+        "package": "linux-cjktty",
+        "repository": "https://gitlab.archlinux.org/archlinux/packaging/packages/linux.git"
+    }
+]
