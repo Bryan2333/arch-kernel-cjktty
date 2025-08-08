@@ -1,0 +1,37 @@
+name: Build Kernel
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "release tag"
+        required: true
+
+jobs:
+   build-and-release:
+     runs-on: ubicloud-standard-16
+     steps:
+       - name: Checkout
+         uses: actions/checkout@v4
+         with:
+           ref: ${{ inputs.tag }}
+
+       - name: Build Package
+         run: |
+           docker run -t -v ${{ github.workspace }}:/build archlinux:base-devel /bin/bash /build/entrypoint.sh
+
+       - name: Upload binaries to release
+         run: |
+           cd ${{ github.workspace }}
+
+           wget -O ghr.tar.gz https://github.com/tcnksm/ghr/releases/download/v0.17.0/ghr_v0.17.0_linux_amd64.tar.gz
+
+           tar -xf ghr.tar.gz
+
+           mv ghr*linux_amd64/ghr .
+
+           mkdir artifacts
+
+           rsync -ahv *.pkg.tar.zst artifacts/
+
+           ./ghr -t ${{ secrets.GITHUB_TOKEN }} -u ${{ github.actor }} -r ${{ github.event.repository.name }} -n ${{ inputs.tag }} -b "$(< checksums.md)" ${{ inputs.tag }} artifacts
